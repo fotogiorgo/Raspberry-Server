@@ -10,6 +10,8 @@
 #include <netinet/in.h>
 #include <sys/types.h>
 
+#define RESET "\x1B[0m"
+#define CYN   "\x1B[36m"
 std::string str;
 char msg[1024];
 
@@ -39,6 +41,7 @@ int Server::acceptClient()
         exit (1);
     }
     _fds.emplace_back(client);
+    std::cout << "New client is here!" << std::endl;
     return 0;
 }
 
@@ -46,38 +49,38 @@ int Server::pollFds()
 {
     int result;
 
-    result = poll(_fds.data(), _fds.size(), 100);
-    if (result == -1)
+    result = poll(_fds.data(), _fds.size(), 200);
+    if (result < 0)
     {
         std::cerr << "poll failed" << std::endl;
         exit (1);       // change theeeese
     }
-    for (int i = 0; i < result;)
+    int i = 0;
+    for (auto fd = _fds.begin(); fd != _fds.end() && i < result; fd++)
     {
-        if (_fds.at(i).revents & POLLIN || _fds.at(i).revents & POLLOUT)
+        if (fd->revents & POLLIN || fd->revents & POLLOUT)
         {
-            if (i == 0)
+            if (fd->fd == _fds.at(0).fd)
             {
                 acceptClient();
             }
             else
             {
-                if (_fds.at(i).revents & POLLIN)
+                if (fd->revents & POLLIN)
                 {
-                    int msgSize = read(_fds.at(i).fd, msg, 1023);
+                    int msgSize = read(fd->fd, msg, 1023);
                     msg[msgSize] = 0;
-                    printf("%s\n", msg);
+                    printf("%s%s%s\n",CYN, msg, RESET);
                 }
-                else if (str.length())
+                if (fd->revents & POLLOUT && str.length())
                 {
-                    send(_fds.at(i).fd, str.c_str(), str.length(), 0);
+                    send(fd->fd, str.c_str(), str.length(), 0);
                     str.clear();
                 }
 
             }
             ++i;
         }
-
     }
     return result;
 }
