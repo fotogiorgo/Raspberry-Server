@@ -1,0 +1,2 @@
+- Need to handle client exit request, currently when the client exits, the server
+is stuck in a loop and keeps printing new lines

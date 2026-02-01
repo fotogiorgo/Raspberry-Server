@@ -27,6 +27,7 @@ class Server
         Server();
         int pollFds();
         int acceptClient();
+        int hangupClient(std::vector<struct pollfd>::iterator& iterator);
 };
 
 int Server::acceptClient()
@@ -38,11 +39,23 @@ int Server::acceptClient()
     if (client.fd <= 0)
     {
         std::cerr << "accept call failed!" << std::endl;
-        exit (1);
+        exit (1); // change these
     }
     _fds.emplace_back(client);
     std::cout << "New client is here!" << std::endl;
     return 0;
+}
+
+int Server::hangupClient(std::vector<struct pollfd>::iterator& iterator)
+{
+    // currently we are disconnecting a client when we receive a msh of length 0
+    // search if thats a proper way to do it, and why could i not use POLLHUP
+    if (close(iterator->fd) != 0)
+    {
+        exit(1); // handle errors better
+    }
+    iterator = _fds.erase(iterator);
+    return (0);
 }
 
 int Server::pollFds()
@@ -69,8 +82,15 @@ int Server::pollFds()
                 if (fd->revents & POLLIN)
                 {
                     int msgSize = read(fd->fd, msg, 1023);
+                    if (msgSize == 0)
+                    {
+                        hangupClient(fd);
+                        printf("Client hanged up!\n");
+                        ++i;
+                        continue;
+                    }
                     msg[msgSize] = 0;
-                    printf("%s%s%s\n",CYN, msg, RESET);
+                    printf("client: %s%s%s\n",CYN, msg, RESET);
                 }
                 if (fd->revents & POLLOUT && str.length())
                 {
@@ -93,7 +113,7 @@ Server::Server() :
     struct pollfd sockfd; 
     int retVal;
     int optVal = 1;
-    socklen_t addressLen = sizeof(_address);
+    _addressLen = sizeof(_address);
 
     sockfd.events = POLLIN;
     sockfd.fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -109,7 +129,7 @@ Server::Server() :
         exit(1);  // change theseeee
     }
 
-    retVal = bind(sockfd.fd, (struct sockaddr*)&_address, addressLen);
+    retVal = bind(sockfd.fd, (struct sockaddr*)&_address, _addressLen);
     if (retVal < 0)
     {
         std::cerr << "bind call failed!" << std::endl;
