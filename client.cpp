@@ -26,7 +26,8 @@ int main(void)
         std::cerr << "Socket call failed!" << std::endl;
         return 1;
     }
-    retVal = inet_pton(AF_INET, "192.168.1.113", &address.sin_addr);
+    retVal = inet_pton(AF_INET, "10.104.95.239", &address.sin_addr);
+    //retVal = inet_pton(AF_INET, "192.168.1.113", &address.sin_addr);
     if (retVal <= 0)
     {
         std::cerr << "inet_pton call failed!" << std::endl;
